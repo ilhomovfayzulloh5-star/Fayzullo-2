@@ -11,6 +11,9 @@
   "author": "Fayzulloh",
   "license": "ISC",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "node-telegram-bot-api": "^0.67.0",
     "dotenv": "^17.4.2",

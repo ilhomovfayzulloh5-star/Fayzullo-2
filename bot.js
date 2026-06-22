@@ -45,7 +45,7 @@ app.listen(PORT, () => {
 });
 
 // ─── Self-ping: Render Free plan da uxlab qolmasligi uchun ─────────
-const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://fayzullo-2.onrender.com';
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://pazanachilik-bot.onrender.com';
 setInterval(() => {
   const http = require('http');
   const https = require('https');

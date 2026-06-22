@@ -8,3 +8,12 @@
 [2026-06-22T15:06:09.866Z] STDERR: Polling xatosi: EFATAL
 [2026-06-22T15:37:07.948Z] STDERR: Polling xatosi: EFATAL
 [2026-06-22T15:37:16.589Z] STDERR: Polling xatosi: EFATAL
+[2026-06-22T16:12:54.245Z] STDOUT: ◇ injected env (2) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+[2026-06-22T16:12:54.740Z] STDOUT: 🗄️ Ma'lumotlar bazasi tayyor!
+[2026-06-22T16:12:54.740Z] STDOUT:    📊 Vazifalar: 5 ta | Foydalanuvchilar: 1 ta
+[2026-06-22T16:12:54.750Z] STDOUT: 🤖 Kun Tartibi Bot muvaffaqiyatli ishga tushdi!
+[2026-06-22T16:12:54.754Z] STDOUT: ✅ Barcha handlerlar tayyor!
+[2026-06-22T16:12:54.754Z] STDOUT: 📅 Eslatmalar tizimi ishga tushdi (har minutda tekshiradi)
+[2026-06-22T16:12:54.754Z] STDOUT: 📡 Server port: 3001 da ishga tushdi
+[2026-06-22T16:13:01.852Z] STDERR: Polling xatosi: ETELEGRAM
+[2026-06-22T16:13:08.833Z] STDERR: Polling xatosi: ETELEGRAM
