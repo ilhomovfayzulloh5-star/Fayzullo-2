@@ -13,11 +13,11 @@
       "title": "kitob oqish",
       "category": "oqish",
       "priority": "yuqori",
-      "status": "kutilmoqda",
+      "status": "bajarilgan",
       "due_date": "2026-06-22",
       "due_time": null,
       "created_at": "2026-06-22 12:45:57",
-      "completed_at": null
+      "completed_at": "2026-06-22 14:04:26"
     },
     {
       "id": 2,
@@ -25,11 +25,11 @@
       "title": "ovqat qilish",
       "category": "shaxsiy",
       "priority": "yuqori",
-      "status": "kutilmoqda",
+      "status": "bajarilgan",
       "due_date": "2026-06-22",
       "due_time": null,
       "created_at": "2026-06-22 12:49:38",
-      "completed_at": null
+      "completed_at": "2026-06-22 14:04:28"
     },
     {
       "id": 3,
@@ -37,11 +37,11 @@
       "title": "dwfgadfg",
       "category": "ish",
       "priority": "past",
-      "status": "kutilmoqda",
+      "status": "bajarilgan",
       "due_date": "2026-06-22",
       "due_time": null,
       "created_at": "2026-06-22 12:51:08",
-      "completed_at": null
+      "completed_at": "2026-06-22 14:04:30"
     },
     {
       "id": 4,
@@ -49,10 +49,22 @@
       "title": "programma qilish",
       "category": "boshqa",
       "priority": "yuqori",
-      "status": "kutilmoqda",
+      "status": "bajarilgan",
       "due_date": "2026-06-22",
       "due_time": null,
       "created_at": "2026-06-22 13:23:25",
+      "completed_at": "2026-06-22 14:04:29"
+    },
+    {
+      "id": 5,
+      "user_id": 8257229870,
+      "title": "135",
+      "category": "ish",
+      "priority": "yuqori",
+      "status": "kutilmoqda",
+      "due_date": null,
+      "due_time": null,
+      "created_at": "2026-06-22 15:10:32",
       "completed_at": null
     }
   ],
@@ -88,8 +100,16 @@
       "remind_at": "18:00",
       "remind_type": "once",
       "is_active": 1
+    },
+    {
+      "id": 5,
+      "task_id": 5,
+      "user_id": 8257229870,
+      "remind_at": "12:00",
+      "remind_type": "once",
+      "is_active": 1
     }
   ],
-  "nextTaskId": 5,
-  "nextReminderId": 5
+  "nextTaskId": 6,
+  "nextReminderId": 6
 }

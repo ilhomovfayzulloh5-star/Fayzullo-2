@@ -44,6 +44,19 @@ app.listen(PORT, () => {
   console.log(`📡 Server port: ${PORT} da ishga tushdi`);
 });
 
+// ─── Self-ping: Render Free plan da uxlab qolmasligi uchun ─────────
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://fayzullo-2.onrender.com';
+setInterval(() => {
+  const http = require('http');
+  const https = require('https');
+  const client = RENDER_URL.startsWith('https') ? https : http;
+  client.get(RENDER_URL, (res) => {
+    console.log(`🏓 Self-ping: ${res.statusCode} — Bot tirik!`);
+  }).on('error', (err) => {
+    console.log('🏓 Self-ping xatosi:', err.message);
+  });
+}, 14 * 60 * 1000); // Har 14 minutda
+
 // ─── Bot yaratish ──────────────────────────────────────────────────
 const token = process.env.BOT_TOKEN;
 if (!token || token === 'YOUR_BOT_TOKEN_HERE') {

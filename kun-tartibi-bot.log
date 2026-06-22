@@ -1,0 +1,10 @@
+[2026-06-22T14:15:59.395Z] STDOUT: ◇ injected env (2) from .env // tip: ⌘ override existing { override: true }
+[2026-06-22T14:15:59.821Z] STDOUT: 🗄️ Ma'lumotlar bazasi tayyor!
+[2026-06-22T14:15:59.821Z] STDOUT:    📊 Vazifalar: 4 ta | Foydalanuvchilar: 1 ta
+[2026-06-22T14:15:59.830Z] STDOUT: 🤖 Kun Tartibi Bot muvaffaqiyatli ishga tushdi!
+[2026-06-22T14:15:59.832Z] STDOUT: ✅ Barcha handlerlar tayyor!
+[2026-06-22T14:15:59.833Z] STDOUT: 📅 Eslatmalar tizimi ishga tushdi (har minutda tekshiradi)
+[2026-06-22T14:15:59.833Z] STDOUT: 📡 Server port: 3001 da ishga tushdi
+[2026-06-22T15:06:09.866Z] STDERR: Polling xatosi: EFATAL
+[2026-06-22T15:37:07.948Z] STDERR: Polling xatosi: EFATAL
+[2026-06-22T15:37:16.589Z] STDERR: Polling xatosi: EFATAL
