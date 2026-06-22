@@ -190,7 +190,8 @@ function startNewTask(chatId, user) {
   
   userStates[chatId] = {
     action: 'awaiting_task_title',
-    userId: user.id
+    userId: user.id,
+    messagesToDelete: []  // Oraliq xabarlarni kuzatish
   };
 
   bot.sendMessage(chatId, 
@@ -202,7 +203,9 @@ function startNewTask(chatId, user) {
         resize_keyboard: true
       }
     }
-  );
+  ).then(sent => {
+    if (userStates[chatId]) userStates[chatId].messagesToDelete.push(sent.message_id);
+  });
 }
 
 // ─── Kategoriya tanlash ────────────────────────────────────────────
@@ -228,7 +231,9 @@ function askCategory(chatId) {
     }
   };
 
-  bot.sendMessage(chatId, '🏷️ *Kategoriya tanlang:*', { parse_mode: 'Markdown', ...keyboard });
+  bot.sendMessage(chatId, '🏷️ *Kategoriya tanlang:*', { parse_mode: 'Markdown', ...keyboard }).then(sent => {
+    if (userStates[chatId]) userStates[chatId].messagesToDelete.push(sent.message_id);
+  });
 }
 
 // ─── Ustuvorlik tanlash ────────────────────────────────────────────
@@ -247,7 +252,9 @@ function askPriority(chatId) {
     }
   };
 
-  bot.sendMessage(chatId, '⚡ *Ustuvorlik darajasini tanlang:*', { parse_mode: 'Markdown', ...keyboard });
+  bot.sendMessage(chatId, '⚡ *Ustuvorlik darajasini tanlang:*', { parse_mode: 'Markdown', ...keyboard }).then(sent => {
+    if (userStates[chatId]) userStates[chatId].messagesToDelete.push(sent.message_id);
+  });
 }
 
 // ─── Muddat so'rash ────────────────────────────────────────────────
@@ -274,7 +281,9 @@ function askDueDate(chatId) {
 
   bot.sendMessage(chatId, '📅 *Muddatni tanlang:*\n\n_Yoki YYYY-MM-DD formatida yozing (masalan: 2026-06-25)_', 
     { parse_mode: 'Markdown', ...keyboard }
-  );
+  ).then(sent => {
+    if (userStates[chatId]) userStates[chatId].messagesToDelete.push(sent.message_id);
+  });
 }
 
 // ─── Eslatma so'rash ───────────────────────────────────────────────
@@ -298,7 +307,19 @@ function askReminder(chatId) {
 
   bot.sendMessage(chatId, '⏰ *Eslatma vaqtini tanlang:*\n\n_Yoki HH:MM formatida yozing (masalan: 14:30)_', 
     { parse_mode: 'Markdown', ...keyboard }
-  );
+  ).then(sent => {
+    if (userStates[chatId]) userStates[chatId].messagesToDelete.push(sent.message_id);
+  });
+}
+
+// ─── Oraliq xabarlarni o'chirish ───────────────────────────────────
+function deleteIntermediateMessages(chatId, messageIds) {
+  if (!messageIds || messageIds.length === 0) return;
+  messageIds.forEach(msgId => {
+    bot.deleteMessage(chatId, msgId).catch(() => {
+      // Xabar allaqachon o'chirilgan bo'lishi mumkin — e'tiborsiz qoldiramiz
+    });
+  });
 }
 
 // ─── Vazifani saqlash ──────────────────────────────────────────────
@@ -322,6 +343,9 @@ function saveTask(chatId) {
     if (state.reminderTime && state.reminderTime !== 'none') {
       insertReminder(taskId, state.userId, state.reminderTime, 'once');
     }
+
+    // ✨ Oraliq xabarlarni o'chirish (kategoriya, ustuvorlik, muddat, eslatma)
+    deleteIntermediateMessages(chatId, state.messagesToDelete);
 
     const catEmoji = CATEGORY_EMOJI[state.category] || '📌';
     const priEmoji = PRIORITY_EMOJI[state.priority] || '🟡';
@@ -761,6 +785,10 @@ bot.on('message', (msg) => {
       bot.sendMessage(chatId, '⚠️ Vazifa nomi 200 ta belgidan oshmasin. Qayta yozing:');
       return;
     }
+    // Foydalanuvchining xabarini ham o'chirish uchun saqlash
+    if (userStates[chatId].messagesToDelete) {
+      userStates[chatId].messagesToDelete.push(msg.message_id);
+    }
     userStates[chatId].taskTitle = text;
     askCategory(chatId);
     return;
@@ -770,6 +798,9 @@ bot.on('message', (msg) => {
   if (state.action === 'awaiting_due_date') {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (dateRegex.test(text)) {
+      if (userStates[chatId].messagesToDelete) {
+        userStates[chatId].messagesToDelete.push(msg.message_id);
+      }
       userStates[chatId].dueDate = text;
       askReminder(chatId);
     } else {
@@ -782,6 +813,9 @@ bot.on('message', (msg) => {
   if (state.action === 'awaiting_reminder') {
     const timeRegex = /^\d{2}:\d{2}$/;
     if (timeRegex.test(text)) {
+      if (userStates[chatId].messagesToDelete) {
+        userStates[chatId].messagesToDelete.push(msg.message_id);
+      }
       userStates[chatId].reminderTime = text;
       saveTask(chatId);
     } else {

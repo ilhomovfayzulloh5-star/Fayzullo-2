@@ -1,0 +1,95 @@
+{
+  "users": {
+    "8257229870": {
+      "username": "fayzulloh_ilhomov",
+      "first_name": "Fayzulloh",
+      "created_at": "2026-06-22 12:45:28"
+    }
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "user_id": 8257229870,
+      "title": "kitob oqish",
+      "category": "oqish",
+      "priority": "yuqori",
+      "status": "kutilmoqda",
+      "due_date": "2026-06-22",
+      "due_time": null,
+      "created_at": "2026-06-22 12:45:57",
+      "completed_at": null
+    },
+    {
+      "id": 2,
+      "user_id": 8257229870,
+      "title": "ovqat qilish",
+      "category": "shaxsiy",
+      "priority": "yuqori",
+      "status": "kutilmoqda",
+      "due_date": "2026-06-22",
+      "due_time": null,
+      "created_at": "2026-06-22 12:49:38",
+      "completed_at": null
+    },
+    {
+      "id": 3,
+      "user_id": 8257229870,
+      "title": "dwfgadfg",
+      "category": "ish",
+      "priority": "past",
+      "status": "kutilmoqda",
+      "due_date": "2026-06-22",
+      "due_time": null,
+      "created_at": "2026-06-22 12:51:08",
+      "completed_at": null
+    },
+    {
+      "id": 4,
+      "user_id": 8257229870,
+      "title": "programma qilish",
+      "category": "boshqa",
+      "priority": "yuqori",
+      "status": "kutilmoqda",
+      "due_date": "2026-06-22",
+      "due_time": null,
+      "created_at": "2026-06-22 13:23:25",
+      "completed_at": null
+    }
+  ],
+  "reminders": [
+    {
+      "id": 1,
+      "task_id": 1,
+      "user_id": 8257229870,
+      "remind_at": "18:00",
+      "remind_type": "once",
+      "is_active": 0
+    },
+    {
+      "id": 2,
+      "task_id": 2,
+      "user_id": 8257229870,
+      "remind_at": "18:00",
+      "remind_type": "once",
+      "is_active": 0
+    },
+    {
+      "id": 3,
+      "task_id": 3,
+      "user_id": 8257229870,
+      "remind_at": "18:00",
+      "remind_type": "once",
+      "is_active": 0
+    },
+    {
+      "id": 4,
+      "task_id": 4,
+      "user_id": 8257229870,
+      "remind_at": "18:00",
+      "remind_type": "once",
+      "is_active": 1
+    }
+  ],
+  "nextTaskId": 5,
+  "nextReminderId": 5
+}
