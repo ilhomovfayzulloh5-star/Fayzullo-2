@@ -1,13 +1,13 @@
 {
-  "name": "kun-tartibi-bot",
+  "name": "pazanchilik-bot",
   "version": "1.0.0",
-  "description": "Kun Tartibi (To-Do) Telegram Bot — vazifalar, eslatmalar, statistika",
+  "description": "Pazanchilik Bot — 1000 ta retseptli Telegram Bot",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
     "dev": "node bot.js"
   },
-  "keywords": ["telegram", "bot", "todo", "uzbek"],
+  "keywords": ["telegram", "bot", "recipes", "cooking", "uzbek"],
   "author": "Fayzulloh",
   "license": "ISC",
   "type": "commonjs",
@@ -17,7 +17,6 @@
   "dependencies": {
     "node-telegram-bot-api": "^0.67.0",
     "dotenv": "^17.4.2",
-    "node-cron": "^3.0.3",
     "express": "^5.2.1"
   }
 }
