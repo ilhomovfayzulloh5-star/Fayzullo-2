@@ -1,13 +1,9 @@
 /**
- * 🍽️ Pazanchilik Bot — 1000 ta Retseptli Telegram Bot
+ * 🍽️ Pazanchilik Bot — Shaxsiy Oshpaz
  * @Pazanachilikbot
  * 
- * Buyruqlar:
- *   /start       — Botni ishga tushirish
- *   /kategoriya  — Kategoriyalar ro'yxati
- *   /qidirish    — Retsept qidirish
- *   /tasodifiy   — Tasodifiy retsept
- *   /yordam      — Yordam menyu
+ * Foydalanuvchi taom nomini yoki masalliqlarni yozadi —
+ * bot retseptni topib beradi + YouTube havolasi!
  */
 
 require('dotenv').config();
@@ -16,27 +12,20 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
-// ─── Express ping server (deploy uchun) ────────────────────────────
+// ─── Express server (Render uchun) ─────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('🍽️ Pazanchilik Bot ishlayapti!'));
-app.get('/health', (req, res) => res.json({ status: 'ok', recipes: recipesData.recipes?.length || 0 }));
-app.listen(PORT, () => {
-  console.log(`📡 Server port: ${PORT} da ishga tushdi`);
-});
+app.listen(PORT, () => console.log(`📡 Server port: ${PORT}`));
 
-// ─── Self-ping: Render Free plan da uxlab qolmasligi uchun ─────────
+// ─── Self-ping ─────────────────────────────────────────────────────
 const RENDER_URL = process.env.RENDER_EXTERNAL_URL || 'https://pazanachilik-bot.onrender.com';
 setInterval(() => {
-  const http = require('http');
   const https = require('https');
+  const http = require('http');
   const client = RENDER_URL.startsWith('https') ? https : http;
-  client.get(RENDER_URL, (res) => {
-    console.log(`🏓 Self-ping: ${res.statusCode} — Bot tirik!`);
-  }).on('error', (err) => {
-    console.log('🏓 Self-ping xatosi:', err.message);
-  });
-}, 14 * 60 * 1000); // Har 14 minutda
+  client.get(RENDER_URL, () => {}).on('error', () => {});
+}, 14 * 60 * 1000);
 
 // ─── Retseptlar bazasini yuklash ───────────────────────────────────
 let recipesData = { categories: [], recipes: [] };
@@ -44,675 +33,282 @@ try {
   const raw = fs.readFileSync(path.join(__dirname, 'recipes.json'), 'utf-8');
   recipesData = JSON.parse(raw);
   console.log(`📚 ${recipesData.recipes.length} ta retsept yuklandi!`);
-  console.log(`📂 ${recipesData.categories.length} ta kategoriya mavjud`);
 } catch (err) {
   console.error('❌ recipes.json yuklashda xato:', err.message);
 }
 
-// ─── Foydalanuvchi ma'lumotlarini saqlash ──────────────────────────
-const USERS_PATH = path.join(__dirname, 'users.json');
-let usersData = { users: {} };
-try {
-  if (fs.existsSync(USERS_PATH)) {
-    usersData = JSON.parse(fs.readFileSync(USERS_PATH, 'utf-8'));
-  }
-} catch (err) {
-  console.log('⚠️ users.json yuklashda xato, yangi yaratiladi');
-}
-
-function saveUsers() {
-  try {
-    fs.writeFileSync(USERS_PATH, JSON.stringify(usersData, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('❌ users.json saqlashda xato:', err.message);
-  }
-}
-
-function getUser(userId) {
-  if (!usersData.users[userId]) {
-    usersData.users[userId] = { favorites: [], history: [], created_at: new Date().toISOString() };
-    saveUsers();
-  }
-  return usersData.users[userId];
-}
-
 // ─── Bot yaratish ──────────────────────────────────────────────────
 const token = process.env.BOT_TOKEN;
-if (!token || token === 'YOUR_BOT_TOKEN_HERE') {
-  console.error('❌ BOT_TOKEN topilmadi! .env faylga tokenni yozing.');
-  process.exit(1);
-}
-
+if (!token) { console.error('❌ BOT_TOKEN topilmadi!'); process.exit(1); }
 const bot = new TelegramBot(token, { polling: true });
-console.log('🤖 Pazanchilik Bot muvaffaqiyatli ishga tushdi!');
+console.log('🤖 Pazanchilik Bot ishga tushdi!');
 
-// ─── Foydalanuvchi holatlari ───────────────────────────────────────
-const userStates = {};
+// ─── Kirill → Lotin transliteratsiya ──────────────────────────────
+const cyrToLat = {
+  'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'j',
+  'з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o',
+  'п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'x','ц':'ts',
+  'ч':'ch','ш':'sh','щ':'sh','ъ':'','ы':'i','ь':'','э':'e','ю':'yu',
+  'я':'ya','ў':'o\'','қ':'q','ғ':'g\'','ҳ':'h'
+};
 
-// ─── Sahifa boshiga ITEMS_PER_PAGE ────────────────────────────────
-const ITEMS_PER_PAGE = 8;
-
-// ─── Yordamchi funksiyalar ─────────────────────────────────────────
-function getRecipesByCategory(categoryId) {
-  return recipesData.recipes.filter(r => r.category === categoryId);
+function toLatin(text) {
+  return text.toLowerCase().split('').map(c => cyrToLat[c] || c).join('');
 }
 
-function getRecipesByLetter(letter) {
-  return recipesData.recipes.filter(r => 
-    r.name.toUpperCase().startsWith(letter.toUpperCase())
+// ─── Oshxona nomlari ───────────────────────────────────────────────
+const cuisineNames = {
+  'uzbek':'🇺🇿 O\'zbek','rus':'🇷🇺 Rus','turk':'🇹🇷 Turk',
+  'italyan':'🇮🇹 Italyan','yapon':'🇯🇵 Yapon','kores':'🇰🇷 Kores',
+  'meksika':'🇲🇽 Meksika','hind':'🇮🇳 Hind','fransuz':'🇫🇷 Fransuz',
+  'gruzin':'🇬🇪 Gruzin','arab':'🇸🇦 Arab','xitoy':'🇨🇳 Xitoy',
+  'tayland':'🇹🇭 Tayland','grek':'🇬🇷 Grek','nemis':'🇩🇪 Nemis',
+  'xalqaro':'🌍 Xalqaro'
+};
+
+// ─── Masalliqlar ro'yxati (aniqlash uchun) ─────────────────────────
+const knownIngredients = [
+  'go\'sht','go\'sht','gusht','mol','qo\'y','tovuq','baliq',
+  'kartoshka','piyoz','sarimsoq','pomidor','sabzi','bodring',
+  'baqlajon','qalampir','karam','qovoq','lavlagi','turp',
+  'guruch','un','xamir','makaron','sut','tuxum','sariyog\'',
+  'pishloq','qaymoq','smetana','yogurt','tvorog',
+  'shakar','tuz','murch','zira','asal','sirka',
+  'moy','zaytun','limon','yong\'oq','mayiz',
+  'ukrop','petirushka','ko\'katlar','bazilik',
+  'shokolad','kakao','vanil','loviya','no\'xat','mosh',
+  'krevetka','jigar','kolbasa','pekon','non',
+  'olma','banan','mango','tarvuz','gilos','uzum',
+  'ot','qiyma','dumba','losos','ananas','avokado',
+  'ismaloq','brokkoli','qo\'ziqorin','kungjut',
+  // kirill variantlar
+  'мясо','картошка','лук','помидор','морковь','курица',
+  'рыба','яйцо','молоко','масло','мука','рис','сыр','сахар','соль'
+];
+
+function isIngredientQuery(text) {
+  const words = text.toLowerCase().replace(/,/g, ' ').split(/\s+/).filter(w => w.length > 1);
+  if (words.length < 2) return false;
+  // Vergul bor — katta ehtimol masalliqlar
+  if (text.includes(',')) return true;
+  // Bilgan masalliqlardan 2+ tasi bormi
+  const matched = words.filter(w => 
+    knownIngredients.some(ing => ing.includes(w) || w.includes(ing) || toLatin(w) === toLatin(ing))
   );
+  return matched.length >= 2;
 }
 
-function showABC(chatId) {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-  const uzAlphabet = "A B D E F G H I J K L M N O P Q R S T U V X Y Z".split(' ');
-  
-  let msg = `🔤 *ABC — Harf bo'yicha qidirish*\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  msg += `_Harfni tanlang — shu harfga boshlanadigan retseptlarni ko'ring_ 👇`;
-
-  const inlineKeyboard = [];
-  let row = [];
-  
-  uzAlphabet.forEach((letter) => {
-    const count = getRecipesByLetter(letter).length;
-    if (count > 0) {
-      row.push({
-        text: `${letter} (${count})`,
-        callback_data: `abc_${letter}_0`
-      });
-      if (row.length === 4) {
-        inlineKeyboard.push([...row]);
-        row = [];
-      }
-    }
-  });
-  if (row.length > 0) inlineKeyboard.push(row);
-
-  bot.sendMessage(chatId, msg, {
-    parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: inlineKeyboard }
-  });
-}
-
-function searchRecipes(query) {
+// ─── Taom nomi bo'yicha qidirish ──────────────────────────────────
+function searchByName(query) {
   const q = query.toLowerCase();
-  return recipesData.recipes.filter(r => 
-    r.name.toLowerCase().includes(q) ||
-    r.ingredients.some(ing => ing.toLowerCase().includes(q)) ||
-    (r.cuisine && r.cuisine.toLowerCase().includes(q))
-  );
+  const qLat = toLatin(q);
+  
+  // Aniq mos kelish
+  const exact = recipesData.recipes.filter(r => {
+    const name = r.name.toLowerCase();
+    return name === q || toLatin(name) === qLat;
+  });
+  if (exact.length > 0) return exact;
+  
+  // Qisman mos kelish
+  return recipesData.recipes.filter(r => {
+    const name = r.name.toLowerCase();
+    const nameLat = toLatin(name);
+    return name.includes(q) || nameLat.includes(qLat) || q.includes(name) || qLat.includes(nameLat);
+  });
 }
 
-function getRandomRecipe() {
-  const idx = Math.floor(Math.random() * recipesData.recipes.length);
-  return recipesData.recipes[idx];
+// ─── Masalliqlar bo'yicha taom topish ─────────────────────────────
+function searchByIngredients(text) {
+  const words = text.toLowerCase().replace(/,/g, ' ').split(/\s+/).filter(w => w.length > 1);
+  const wordsLat = words.map(w => toLatin(w));
+  
+  // Har bir retseptda nechta masalliq mos kelishini hisoblash
+  const scored = recipesData.recipes.map(recipe => {
+    let matchCount = 0;
+    recipe.ingredients.forEach(ing => {
+      const ingLow = ing.toLowerCase();
+      const ingLat = toLatin(ingLow);
+      words.forEach((word, i) => {
+        if (ingLow.includes(word) || ingLat.includes(wordsLat[i]) || ingLow.includes(wordsLat[i])) {
+          matchCount++;
+        }
+      });
+    });
+    return { recipe, matchCount };
+  });
+  
+  // Eng ko'p mos kelganlarni qaytarish
+  return scored
+    .filter(s => s.matchCount >= 2)
+    .sort((a, b) => b.matchCount - a.matchCount)
+    .slice(0, 10)
+    .map(s => s.recipe);
 }
 
-function getRecipeById(id) {
-  return recipesData.recipes.find(r => r.id === id);
-}
-
+// ─── Retseptni chiroyli formatlash ─────────────────────────────────
 function formatRecipe(recipe) {
-  let msg = `${recipe.emoji || '🍽️'} *${recipe.name}*\n`;
+  let msg = '';
+  
+  // Sarlavha
+  msg += `🍽️ *${recipe.name.toUpperCase()}*\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
   
   // Ma'lumotlar
-  const cat = recipesData.categories.find(c => c.id === recipe.category);
-  if (cat) msg += `📂 *Kategoriya:* ${cat.name}\n`;
-  if (recipe.cuisine) {
-    const cuisineNames = {
-      'uzbek': '🇺🇿 O\'zbek', 'rus': '🇷🇺 Rus', 'turk': '🇹🇷 Turk',
-      'italyan': '🇮🇹 Italyan', 'yapon': '🇯🇵 Yapon', 'kores': '🇰🇷 Kores',
-      'meksika': '🇲🇽 Meksika', 'hind': '🇮🇳 Hind', 'fransuz': '🇫🇷 Fransuz',
-      'gruzin': '🇬🇪 Gruzin', 'arab': '🇸🇦 Arab', 'xitoy': '🇨🇳 Xitoy',
-      'tayland': '🇹🇭 Tayland', 'grek': '🇬🇷 Grek', 'nemis': '🇩🇪 Nemis'
-    };
-    msg += `🌍 *Oshxona:* ${cuisineNames[recipe.cuisine] || recipe.cuisine}\n`;
-  }
+  if (recipe.cuisine) msg += `🌍 ${cuisineNames[recipe.cuisine] || recipe.cuisine}\n`;
   if (recipe.difficulty) {
-    const diffEmoji = { 'oson': '🟢 Oson', "o'rta": '🟡 O\'rta', 'qiyin': '🔴 Qiyin' };
-    msg += `📊 *Qiyinlik:* ${diffEmoji[recipe.difficulty] || recipe.difficulty}\n`;
+    const d = {'oson':'🟢 Oson',"o'rta":'🟡 O\'rta','qiyin':'🔴 Qiyin'};
+    msg += `📊 ${d[recipe.difficulty] || recipe.difficulty}\n`;
   }
-  if (recipe.prepTime) msg += `⏱️ *Tayyorlash:* ${recipe.prepTime}\n`;
-  if (recipe.cookTime) msg += `🔥 *Pishirish:* ${recipe.cookTime}\n`;
-  if (recipe.servings) msg += `👥 *Porsiya:* ${recipe.servings} kishi\n`;
+  if (recipe.prepTime) msg += `⏱ Tayyorlash: ${recipe.prepTime}\n`;
+  if (recipe.cookTime) msg += `🔥 Pishirish: ${recipe.cookTime}\n`;
+  if (recipe.servings) msg += `👥 ${recipe.servings} kishilik\n`;
   
-  msg += `\n🧾 *Masalliqlar:*\n`;
+  // Masalliqlar
+  msg += `\n🧾 *KERAKLI MASALLIQLAR:*\n\n`;
   recipe.ingredients.forEach((ing, i) => {
-    msg += `  ${i + 1}. ${ing}\n`;
+    msg += `  • ${ing}\n`;
   });
   
-  msg += `\n📝 *Tayyorlash tartibi:*\n`;
+  // Tayyorlanish jarayoni
+  msg += `\n📝 *TAYYORLANISH JARAYONI:*\n`;
   recipe.instructions.forEach((step, i) => {
-    msg += `\n*${i + 1}-qadam:* ${step}\n`;
+    msg += `\n*${i + 1}.* ${step}\n`;
   });
   
-  msg += `\n🆔 Retsept #${recipe.id}`;
-  
+  // YouTube
   if (recipe.youtube) {
-    msg += `\n\n🎬 [YouTube'da ko'rish](${recipe.youtube})`;
+    msg += `\n━━━━━━━━━━━━━━━━━━━━`;
+    msg += `\n🎬 *Video retsept:*\n[▶️ YouTube'da ko'rish](${recipe.youtube})`;
   }
+  
+  msg += `\n\n_Yoqimli ishtaha! 🍽️_`;
   
   return msg;
-}
-
-// ─── Asosiy menyu ──────────────────────────────────────────────────
-function getMainKeyboard() {
-  return {
-    reply_markup: {
-      keyboard: [
-        ['📂 Kategoriyalar', '🔤 ABC harflar'],
-        ['🎲 Tasodifiy retsept', '🔍 Qidirish'],
-        ['⭐ Sevimlilar', '📊 Statistika'],
-        ['❓ Yordam']
-      ],
-      resize_keyboard: true
-    }
-  };
 }
 
 // ─── /start buyrug'i ───────────────────────────────────────────────
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  const user = msg.from;
-  getUser(user.id);
-  delete userStates[chatId];
+  const name = msg.from.first_name || 'do\'stim';
 
-  const totalRecipes = recipesData.recipes.length;
-  const totalCategories = recipesData.categories.length;
+  const welcome = `👨‍🍳 *Salom, ${name}!*
 
-  const welcome = `🎉 *Salom, ${user.first_name || 'do\'stim'}!*
+Men sizning *shaxsiy oshpaz*ingizman! 🍽️
 
-🍽️ Men — *Pazanchilik Bot*man!
+✏️ Menga xohlagan taomingiz nomini yozing yoki uyda bor masalliqlarni sanab bering _(masalan: pomidor, tuxum)_, shundan mazali taom retseptini darhol tuzib beraman!
 
-Menda *${totalRecipes}* ta retsept bor, *${totalCategories}* ta kategoriyada!
+📌 *Misol:*
+• _palov_ — palov retseptini beraman
+• _шурпа_ — kirill harfda ham ishlaydi
+• _go'sht, kartoshka, piyoz_ — masalliqlardan taom topaman
 
-📂 *Kategoriyalar* — Taom turini tanlang
-🎲 *Tasodifiy* — Tasodifiy retsept oling
-🔍 *Qidirish* — Nomi yoki masalliq bo'yicha
-⭐ *Sevimlilar* — Saqlangan retseptlar
-📊 *Statistika* — Bot haqida ma'lumot
+_Ovqat nomini yozing_ 👇`;
 
-_Boshlash uchun quyidagi tugmalardan foydalaning_ 👇`;
-
-  bot.sendMessage(chatId, welcome, {
-    parse_mode: 'Markdown',
-    ...getMainKeyboard()
-  });
+  bot.sendMessage(chatId, welcome, { parse_mode: 'Markdown' });
 });
 
 // ─── /yordam buyrug'i ──────────────────────────────────────────────
-bot.onText(/\/yordam/, (msg) => sendHelp(msg.chat.id));
+bot.onText(/\/yordam/, (msg) => {
+  bot.sendMessage(msg.chat.id, `❓ *Yordam*
 
-function sendHelp(chatId) {
-  const help = `❓ *Yordam — Pazanchilik Bot*
+✏️ *Taom nomi yozing* — retseptni beraman
+✏️ *Masalliqlar yozing* — taom topaman
+✏️ *Lotin yoki Kirill* harfda yozing
 
-📌 *Buyruqlar:*
-/start — Botni qayta ishga tushirish
-/kategoriya — Kategoriyalar ro'yxati
-/qidirish — Retsept qidirish
-/tasodifiy — Tasodifiy retsept olish
-/sevimlilar — Sevimli retseptlar
-/yordam — Shu yordam sahifasi
+📌 Misol: _pizza, борщ, tovuq kartoshka piyoz_
 
-📌 *Tugmalar:*
-📂 Kategoriyalar — Taom turini tanlang
-🎲 Tasodifiy — Tasodifiy retsept
-🔍 Qidirish — Nom/masalliq bo'yicha
-⭐ Sevimlilar — Saqlangan retseptlar
-
-📌 *Retsept ichida:*
-⭐ — Sevimli qilish
-🎲 — Yana tasodifiy olish
-
-_Yoqimli ishtaha tilayman!_ 🍽️`;
-
-  bot.sendMessage(chatId, help, { parse_mode: 'Markdown', ...getMainKeyboard() });
-}
-
-// ─── Kategoriyalar ─────────────────────────────────────────────────
-bot.onText(/\/kategoriya/, (msg) => showCategories(msg.chat.id));
-
-function showCategories(chatId) {
-  let msg = `📂 *Kategoriyalar*\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  const inlineKeyboard = [];
-  let row = [];
-
-  recipesData.categories.forEach((cat, i) => {
-    const count = getRecipesByCategory(cat.id).length;
-    row.push({
-      text: `${cat.emoji} ${cat.name.replace(cat.emoji, '').trim()} (${count})`,
-      callback_data: `cat_${cat.id}_0`
-    });
-
-    if (row.length === 2 || i === recipesData.categories.length - 1) {
-      inlineKeyboard.push([...row]);
-      row = [];
-    }
-  });
-
-  msg += `_Kategoriya tanlang — ichidagi retseptlarni ko'ring_ 👇`;
-
-  bot.sendMessage(chatId, msg, {
-    parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: inlineKeyboard }
-  });
-}
-
-// ─── Qidirish ──────────────────────────────────────────────────────
-bot.onText(/\/qidirish/, (msg) => startSearch(msg.chat.id));
-
-function startSearch(chatId) {
-  userStates[chatId] = { action: 'awaiting_search' };
-  bot.sendMessage(chatId, 
-    `🔍 *Retsept qidirish*\n\nTaom nomi yoki masalliq nomini yozing:\n\n_Masalan: "palov", "kartoshka", "shokolad"_`,
-    { 
-      parse_mode: 'Markdown',
-      reply_markup: {
-        keyboard: [['❌ Bekor qilish']],
-        resize_keyboard: true
-      }
-    }
-  );
-}
-
-// ─── Tasodifiy retsept ─────────────────────────────────────────────
-bot.onText(/\/tasodifiy/, (msg) => showRandomRecipe(msg.chat.id, msg.from.id));
-
-function showRandomRecipe(chatId, userId) {
-  const recipe = getRandomRecipe();
-  if (!recipe) {
-    bot.sendMessage(chatId, '❌ Retseptlar topilmadi.', getMainKeyboard());
-    return;
-  }
-
-  // Tarixga qo'shish
-  const user = getUser(userId);
-  if (!user.history.includes(recipe.id)) {
-    user.history.push(recipe.id);
-    if (user.history.length > 50) user.history.shift();
-    saveUsers();
-  }
-
-  const isFav = user.favorites.includes(recipe.id);
-  
-  bot.sendMessage(chatId, formatRecipe(recipe), {
-    parse_mode: 'Markdown',
-    reply_markup: {
-      inline_keyboard: [
-        [
-          { text: isFav ? '💛 Sevimlilardan olish' : '⭐ Sevimlilarga qo\'shish', callback_data: `fav_${recipe.id}` },
-        ],
-        [
-          { text: '🎲 Yana tasodifiy', callback_data: 'random' },
-          { text: '📂 Kategoriyalar', callback_data: 'show_categories' }
-        ]
-      ]
-    }
-  });
-}
-
-// ─── Sevimlilar ────────────────────────────────────────────────────
-bot.onText(/\/sevimlilar/, (msg) => showFavorites(msg.chat.id, msg.from.id));
-
-function showFavorites(chatId, userId) {
-  const user = getUser(userId);
-  
-  if (user.favorites.length === 0) {
-    bot.sendMessage(chatId, 
-      `⭐ *Sevimli retseptlar*\n\n📭 Hali sevimli retseptingiz yo'q.\n\n_Retsept ko'rayotganda ⭐ tugmasini bosing!_`,
-      { parse_mode: 'Markdown', ...getMainKeyboard() }
-    );
-    return;
-  }
-
-  let msg = `⭐ *Sevimli retseptlar* (${user.favorites.length} ta)\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  const favRecipes = user.favorites
-    .map(id => getRecipeById(id))
-    .filter(r => r);
-
-  const inlineKeyboard = [];
-  favRecipes.slice(0, 15).forEach(recipe => {
-    inlineKeyboard.push([{
-      text: `${recipe.emoji || '🍽️'} ${recipe.name}`,
-      callback_data: `show_${recipe.id}`
-    }]);
-  });
-
-  msg += `_Retseptni tanlang_ 👇`;
-
-  bot.sendMessage(chatId, msg, {
-    parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: inlineKeyboard }
-  });
-}
-
-// ─── Statistika ────────────────────────────────────────────────────
-bot.onText(/\/statistika/, (msg) => showStats(msg.chat.id, msg.from.id));
-
-function showStats(chatId, userId) {
-  const user = getUser(userId);
-  const totalRecipes = recipesData.recipes.length;
-  const totalCategories = recipesData.categories.length;
-  const totalUsers = Object.keys(usersData.users).length;
-
-  let msg = `📊 *Bot Statistikasi*\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  msg += `🍽️ *Jami retseptlar:* ${totalRecipes} ta\n`;
-  msg += `📂 *Kategoriyalar:* ${totalCategories} ta\n`;
-  msg += `👥 *Foydalanuvchilar:* ${totalUsers} ta\n\n`;
-
-  msg += `📌 *Sizning ma'lumotlaringiz:*\n`;
-  msg += `⭐ Sevimlilar: ${user.favorites.length} ta\n`;
-  msg += `📖 Ko'rilgan: ${user.history.length} ta retsept\n\n`;
-
-  // Har bir kategoriya bo'yicha
-  msg += `📂 *Kategoriyalar taqsimoti:*\n`;
-  recipesData.categories.forEach(cat => {
-    const count = getRecipesByCategory(cat.id).length;
-    msg += `  ${cat.emoji} ${cat.name.replace(cat.emoji, '').trim()}: ${count} ta\n`;
-  });
-
-  msg += `\n_Yoqimli ishtaha!_ 🍽️`;
-
-  bot.sendMessage(chatId, msg, { parse_mode: 'Markdown', ...getMainKeyboard() });
-}
-
-// ─── Callback query handler ───────────────────────────────────────
-bot.on('callback_query', (query) => {
-  const chatId = query.message.chat.id;
-  const data = query.data;
-  const userId = query.from.id;
-
-  // ─── ABC harf bo'yicha qidirish ───
-  if (data.startsWith('abc_')) {
-    const parts = data.split('_');
-    const letter = parts[1];
-    const page = parseInt(parts[2]) || 0;
-    
-    const recipes = getRecipesByLetter(letter);
-    
-    if (recipes.length === 0) {
-      bot.answerCallbackQuery(query.id, { text: `"${letter}" harfida retsept yo'q` });
-      return;
-    }
-
-    const start = page * ITEMS_PER_PAGE;
-    const end = Math.min(start + ITEMS_PER_PAGE, recipes.length);
-    const pageRecipes = recipes.slice(start, end);
-    const totalPages = Math.ceil(recipes.length / ITEMS_PER_PAGE);
-
-    let msg = `🔤 *"${letter}" harfi bilan boshlanadigan retseptlar*\n`;
-    msg += `📊 Jami: ${recipes.length} ta | Sahifa ${page + 1}/${totalPages}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-    msg += `_Retseptni tanlang_ 👇`;
-
-    const inlineKeyboard = [];
-    pageRecipes.forEach(recipe => {
-      inlineKeyboard.push([{
-        text: `${recipe.emoji || '🍽️'} ${recipe.name}`,
-        callback_data: `show_${recipe.id}`
-      }]);
-    });
-
-    const navRow = [];
-    if (page > 0) navRow.push({ text: '⬅️ Oldingi', callback_data: `abc_${letter}_${page - 1}` });
-    if (end < recipes.length) navRow.push({ text: '➡️ Keyingi', callback_data: `abc_${letter}_${page + 1}` });
-    if (navRow.length > 0) inlineKeyboard.push(navRow);
-    inlineKeyboard.push([{ text: '🔙 ABC harflarga qaytish', callback_data: 'show_abc' }]);
-
-    bot.answerCallbackQuery(query.id);
-    bot.editMessageText(msg, {
-      chat_id: chatId,
-      message_id: query.message.message_id,
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: inlineKeyboard }
-    }).catch(() => {
-      bot.sendMessage(chatId, msg, {
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
-    });
-    return;
-  }
-
-  // ─── ABC ga qaytish ───
-  if (data === 'show_abc') {
-    bot.answerCallbackQuery(query.id);
-    showABC(chatId);
-    return;
-  }
-
-  // ─── Kategoriya tanlash ───
-  if (data.startsWith('cat_')) {
-    const parts = data.split('_');
-    const categoryId = parts[1];
-    const page = parseInt(parts[2]) || 0;
-    
-    const recipes = getRecipesByCategory(categoryId);
-    const cat = recipesData.categories.find(c => c.id === categoryId);
-    
-    if (recipes.length === 0) {
-      bot.answerCallbackQuery(query.id, { text: 'Bu kategoriyada retsept yo\'q' });
-      return;
-    }
-
-    const start = page * ITEMS_PER_PAGE;
-    const end = Math.min(start + ITEMS_PER_PAGE, recipes.length);
-    const pageRecipes = recipes.slice(start, end);
-    const totalPages = Math.ceil(recipes.length / ITEMS_PER_PAGE);
-
-    let msg = `${cat.emoji} *${cat.name.replace(cat.emoji, '').trim()}*\n`;
-    msg += `📊 Jami: ${recipes.length} ta retsept | Sahifa ${page + 1}/${totalPages}\n`;
-    msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-    const inlineKeyboard = [];
-    pageRecipes.forEach(recipe => {
-      const diff = recipe.difficulty === 'oson' ? '🟢' : recipe.difficulty === "o'rta" ? '🟡' : '🔴';
-      inlineKeyboard.push([{
-        text: `${recipe.emoji || '🍽️'} ${recipe.name} ${diff}`,
-        callback_data: `show_${recipe.id}`
-      }]);
-    });
-
-    // Pagination tugmalari
-    const navRow = [];
-    if (page > 0) {
-      navRow.push({ text: '⬅️ Oldingi', callback_data: `cat_${categoryId}_${page - 1}` });
-    }
-    if (end < recipes.length) {
-      navRow.push({ text: '➡️ Keyingi', callback_data: `cat_${categoryId}_${page + 1}` });
-    }
-    if (navRow.length > 0) inlineKeyboard.push(navRow);
-
-    // Orqaga tugmasi
-    inlineKeyboard.push([{ text: '🔙 Kategoriyalarga qaytish', callback_data: 'show_categories' }]);
-
-    msg += `_Retseptni tanlang_ 👇`;
-
-    bot.answerCallbackQuery(query.id);
-    bot.editMessageText(msg, {
-      chat_id: chatId,
-      message_id: query.message.message_id,
-      parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: inlineKeyboard }
-    }).catch(() => {
-      bot.sendMessage(chatId, msg, {
-        parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
-    });
-    return;
-  }
-
-  // ─── Retseptni ko'rsatish ───
-  if (data.startsWith('show_')) {
-    const recipeId = parseInt(data.replace('show_', ''));
-    const recipe = getRecipeById(recipeId);
-    
-    if (!recipe) {
-      bot.answerCallbackQuery(query.id, { text: '❌ Retsept topilmadi' });
-      return;
-    }
-
-    // Tarixga qo'shish
-    const user = getUser(userId);
-    if (!user.history.includes(recipe.id)) {
-      user.history.push(recipe.id);
-      if (user.history.length > 50) user.history.shift();
-      saveUsers();
-    }
-
-    const isFav = user.favorites.includes(recipe.id);
-
-    bot.answerCallbackQuery(query.id);
-    bot.sendMessage(chatId, formatRecipe(recipe), {
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: isFav ? '💛 Sevimlilardan olish' : '⭐ Sevimlilarga qo\'shish', callback_data: `fav_${recipe.id}` }
-          ],
-          [
-            { text: '🎲 Tasodifiy', callback_data: 'random' },
-            { text: `📂 ${recipesData.categories.find(c => c.id === recipe.category)?.emoji || '📂'} Shu kategoriya`, callback_data: `cat_${recipe.category}_0` }
-          ],
-          [
-            { text: '🔙 Kategoriyalar', callback_data: 'show_categories' }
-          ]
-        ]
-      }
-    });
-    return;
-  }
-
-  // ─── Sevimli qilish ───
-  if (data.startsWith('fav_')) {
-    const recipeId = parseInt(data.replace('fav_', ''));
-    const user = getUser(userId);
-    
-    const idx = user.favorites.indexOf(recipeId);
-    if (idx === -1) {
-      user.favorites.push(recipeId);
-      bot.answerCallbackQuery(query.id, { text: '⭐ Sevimlilarga qo\'shildi!' });
-    } else {
-      user.favorites.splice(idx, 1);
-      bot.answerCallbackQuery(query.id, { text: '💔 Sevimlilardan olindi' });
-    }
-    saveUsers();
-
-    // Tugmani yangilash
-    const recipe = getRecipeById(recipeId);
-    if (recipe) {
-      const isFav = user.favorites.includes(recipeId);
-      try {
-        bot.editMessageReplyMarkup({
-          inline_keyboard: [
-            [
-              { text: isFav ? '💛 Sevimlilardan olish' : '⭐ Sevimlilarga qo\'shish', callback_data: `fav_${recipe.id}` }
-            ],
-            [
-              { text: '🎲 Tasodifiy', callback_data: 'random' },
-              { text: `📂 ${recipesData.categories.find(c => c.id === recipe.category)?.emoji || '📂'} Shu kategoriya`, callback_data: `cat_${recipe.category}_0` }
-            ],
-            [
-              { text: '🔙 Kategoriyalar', callback_data: 'show_categories' }
-            ]
-          ]
-        }, {
-          chat_id: chatId,
-          message_id: query.message.message_id
-        });
-      } catch (e) { /* ignore */ }
-    }
-    return;
-  }
-
-  // ─── Tasodifiy retsept ───
-  if (data === 'random') {
-    bot.answerCallbackQuery(query.id, { text: '🎲 Tasodifiy retsept...' });
-    showRandomRecipe(chatId, userId);
-    return;
-  }
-
-  // ─── Kategoriyalarga qaytish ───
-  if (data === 'show_categories') {
-    bot.answerCallbackQuery(query.id);
-    showCategories(chatId);
-    return;
-  }
+_Shunchaki yozing — men topaman!_ 🍽️`, { parse_mode: 'Markdown' });
 });
 
-// ─── Matn xabarlarini qayta ishlash ───────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// ASOSIY: Foydalanuvchi xabar yozganda
+// ═══════════════════════════════════════════════════════════════════
 bot.on('message', (msg) => {
   if (!msg.text || msg.text.startsWith('/')) return;
   
   const chatId = msg.chat.id;
   const text = msg.text.trim();
-  const user = msg.from;
 
-  // ─── Bekor qilish ───
-  if (text === '❌ Bekor qilish') {
-    delete userStates[chatId];
-    bot.sendMessage(chatId, '↩️ Bekor qilindi.', getMainKeyboard());
+  if (text.length < 2) return;
+
+  // ─── 1. Masalliqlar yozilganmi tekshirish ───
+  if (isIngredientQuery(text)) {
+    const results = searchByIngredients(text);
+    
+    if (results.length > 0) {
+      // Eng yaxshi natijani ko'rsatish
+      const best = results[0];
+      let intro = `👨‍🍳 *Sizning masalliqlaringizdan eng mazali taom:*\n\n`;
+      bot.sendMessage(chatId, intro + formatRecipe(best), { 
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true 
+      });
+      
+      // Agar boshqa variantlar ham bo'lsa
+      if (results.length > 1) {
+        let more = `\n📋 *Yana boshqa variantlar:*\n\n`;
+        results.slice(1, 6).forEach((r, i) => {
+          more += `${i + 2}. ${r.emoji || '🍽️'} *${r.name}*\n`;
+        });
+        more += `\n_Taom nomini yozing — retseptini beraman_`;
+        
+        setTimeout(() => {
+          bot.sendMessage(chatId, more, { parse_mode: 'Markdown' });
+        }, 500);
+      }
+      return;
+    }
+    
+    // Masalliqlardan hech narsa topilmadi
+    bot.sendMessage(chatId, 
+      `😕 Siz yozgan masalliqlardan mos taom topilmadi.\n\n_Boshqa masalliqlar yozing yoki to'g'ridan-to'g'ri taom nomini yozing._`,
+      { parse_mode: 'Markdown' }
+    );
     return;
   }
 
-  // ─── Menyu tugmalari ───
-  if (text === '📂 Kategoriyalar') { showCategories(chatId); return; }
-  if (text === '🔤 ABC harflar') { showABC(chatId); return; }
-  if (text === '🎲 Tasodifiy retsept') { showRandomRecipe(chatId, user.id); return; }
-  if (text === '🔍 Qidirish') { startSearch(chatId); return; }
-  if (text === '⭐ Sevimlilar') { showFavorites(chatId, user.id); return; }
-  if (text === '📊 Statistika') { showStats(chatId, user.id); return; }
-  if (text === '❓ Yordam') { sendHelp(chatId); return; }
+  // ─── 2. Taom nomi bo'yicha qidirish ───
+  const results = searchByName(text);
 
-  // ─── Qidirish holati ───
-  const state = userStates[chatId];
-  if (state && state.action === 'awaiting_search') {
-    delete userStates[chatId];
-
-    if (text.length < 2) {
-      bot.sendMessage(chatId, '⚠️ Kamida 2 ta harf kiriting.', getMainKeyboard());
-      return;
-    }
-
-    const results = searchRecipes(text);
-
-    if (results.length === 0) {
-      bot.sendMessage(chatId, 
-        `🔍 *"${text}" bo'yicha natija topilmadi*\n\n_Boshqa so'z bilan qidirib ko'ring_`,
-        { parse_mode: 'Markdown', ...getMainKeyboard() }
-      );
-      return;
-    }
-
-    let resultMsg = `🔍 *"${text}" bo'yicha topildi: ${results.length} ta*\n`;
-    resultMsg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-    const inlineKeyboard = [];
-    results.slice(0, 15).forEach(recipe => {
-      inlineKeyboard.push([{
-        text: `${recipe.emoji || '🍽️'} ${recipe.name}`,
-        callback_data: `show_${recipe.id}`
-      }]);
-    });
-
-    if (results.length > 15) {
-      resultMsg += `\n_Faqat dastlabki 15 tasi ko'rsatilmoqda_`;
-    }
-
-    bot.sendMessage(chatId, resultMsg, {
+  if (results.length === 1) {
+    // Aniq 1 ta natija — retseptni ko'rsatish
+    bot.sendMessage(chatId, formatRecipe(results[0]), { 
       parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: inlineKeyboard }
+      disable_web_page_preview: true 
     });
     return;
   }
+
+  if (results.length > 1) {
+    // Birinchisini to'liq ko'rsatish
+    bot.sendMessage(chatId, formatRecipe(results[0]), { 
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true 
+    });
+    
+    // Qolganlarini ro'yxat qilib ko'rsatish
+    if (results.length > 1) {
+      let more = `\n📋 *"${text}" bo'yicha yana topildi:*\n\n`;
+      results.slice(1, 8).forEach((r, i) => {
+        more += `${i + 2}. ${r.emoji || '🍽️'} *${r.name}*\n`;
+      });
+      more += `\n_Taom nomini yozing — to'liq retseptini beraman_`;
+      
+      setTimeout(() => {
+        bot.sendMessage(chatId, more, { parse_mode: 'Markdown' });
+      }, 500);
+    }
+    return;
+  }
+
+  // ─── 3. Hech narsa topilmadi ───
+  // YouTube qidiruviga yo'naltirish
+  const youtubeQuery = encodeURIComponent(text + ' retsepti');
+  bot.sendMessage(chatId, 
+    `😕 *"${text}"* — bazamda topilmadi.\n\nLekin YouTube'dan ko'rishingiz mumkin:\n🎬 [▶️ YouTube'da qidirish](https://www.youtube.com/results?search_query=${youtubeQuery})\n\n_Boshqa taom nomini yozing yoki masalliqlar sanab bering._`,
+    { parse_mode: 'Markdown' }
+  );
 });
 
 // ─── Xatolarni ushlab qolish ──────────────────────────────────────
@@ -724,5 +320,4 @@ process.on('uncaughtException', (err) => {
   console.error('Kutilmagan xato:', err);
 });
 
-console.log('✅ Barcha handlerlar tayyor!');
-console.log('🍽️ Pazanchilik Bot tayyor — 1000 ta retsept bilan!');
+console.log('✅ Pazanchilik Bot tayyor — yozing, retseptni topaman!');
