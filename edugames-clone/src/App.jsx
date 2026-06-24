@@ -18,11 +18,12 @@ import MathGameScreen from './components/MathGameScreen';
 import OnlineGameScreen from './components/OnlineGameScreen';
 import MemoryGameScreen from './components/MemoryGameScreen';
 import FlagGameScreen from './components/FlagGameScreen';
+import ColorGameScreen from './components/ColorGameScreen';
 import './App.css';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [view, setView] = useState('landing'); // 'landing', 'game', 'online', 'memory', 'flags'
+  const [view, setView] = useState('landing'); // 'landing', 'game', 'online', 'memory', 'flags', 'colors'
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [gameSettings, setGameSettings] = useState(null);
   const [gameType, setGameType] = useState(null); // 'math' or 'english'
@@ -53,6 +54,7 @@ function App() {
         onSelectOnline={() => { setView('online'); closeSidebar(); }} 
         onSelectMemory={() => { setView('memory'); closeSidebar(); }} 
         onSelectFlags={() => { setView('flags'); closeSidebar(); }} 
+        onSelectColors={() => { setView('colors'); closeSidebar(); }} 
       />
       
       {isSidebarOpen && (
@@ -78,6 +80,7 @@ function App() {
             view === 'online' ? "Online o'ynash" : 
             view === 'memory' ? "Xotira o'yini" : 
             view === 'flags' ? "Bayroqlar o'yini" : 
+            view === 'colors' ? "Farqli rangni toping" : 
             view === 'game' ? "Arqon tortish" : 
             "Bosh sahifa"
           } 
@@ -105,6 +108,7 @@ function App() {
                 onSelectOnline={() => setView('online')} 
                 onSelectMemory={() => setView('memory')} 
                 onSelectFlags={() => setView('flags')} 
+                onSelectColors={() => setView('colors')} 
               />
               <Features />
               <OnlineSection onSelectOnline={() => setView('online')} />
@@ -118,6 +122,7 @@ function App() {
                 onSelectOnline={() => setView('online')} 
                 onSelectMemory={() => setView('memory')} 
                 onSelectFlags={() => setView('flags')} 
+                onSelectColors={() => setView('colors')} 
               />
             </div>
           ) : view === 'online' ? (
@@ -130,6 +135,10 @@ function App() {
             />
           ) : view === 'flags' ? (
             <FlagGameScreen 
+              onQuit={() => setView('landing')} 
+            />
+          ) : view === 'colors' ? (
+            <ColorGameScreen 
               onQuit={() => setView('landing')} 
             />
           ) : (

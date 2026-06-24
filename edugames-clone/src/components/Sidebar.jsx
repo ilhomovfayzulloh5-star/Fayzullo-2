@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Sidebar = ({ isOpen, onSelectOnline, onSelectMemory, onSelectFlags }) => {
+const Sidebar = ({ isOpen, onSelectOnline, onSelectMemory, onSelectFlags, onSelectColors }) => {
   const [isMateriallarOpen, setIsMateriallarOpen] = useState(false);
   const [isMetodlarOpen, setIsMetodlarOpen] = useState(false);
 
@@ -181,6 +181,20 @@ const Sidebar = ({ isOpen, onSelectOnline, onSelectMemory, onSelectFlags }) => {
                 <line x1="4" y1="22" x2="4" y2="15" />
               </svg>
               <span className="nav-text">Bayroqlar</span>
+            </a>
+            <a 
+              href="/game/colors/" 
+              className="nav-sublink"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onSelectColors) onSelectColors();
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 2v20M2 12h20" />
+              </svg>
+              <span className="nav-text">Ranglar</span>
             </a>
             <a href="/login" rel="nofollow" className="nav-sublink guest-auth-link">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
