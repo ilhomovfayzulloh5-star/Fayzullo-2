@@ -45,13 +45,15 @@ const playAudioFeedback = (type) => {
       osc.stop(ctx.currentTime + 0.25);
       osc2.stop(ctx.currentTime + 0.35);
 
-      // Play synthesized "Zor!" voice speech
+      // Play synthesized encouraging voice speech
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance("Zo'r!");
+        const encouragingWords = ["Barakalla!", "Ajoyib!", "Ofarin!", "To'g'ri!", "Yashang!"];
+        const randomWord = encouragingWords[Math.floor(Math.random() * encouragingWords.length)];
+        const utterance = new SpeechSynthesisUtterance(randomWord);
         utterance.lang = 'uz-UZ';
         utterance.volume = 1.0;
-        utterance.rate = 1.2;
+        utterance.rate = 1.25;
         window.speechSynthesis.speak(utterance);
       }
     } else if (type === 'fail') {
