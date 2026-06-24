@@ -17,11 +17,12 @@ import MathSetupModal from './components/MathSetupModal';
 import MathGameScreen from './components/MathGameScreen';
 import OnlineGameScreen from './components/OnlineGameScreen';
 import MemoryGameScreen from './components/MemoryGameScreen';
+import FlagGameScreen from './components/FlagGameScreen';
 import './App.css';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [view, setView] = useState('landing'); // 'landing', 'game', 'online', 'memory'
+  const [view, setView] = useState('landing'); // 'landing', 'game', 'online', 'memory', 'flags'
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [gameSettings, setGameSettings] = useState(null);
   const [gameType, setGameType] = useState(null); // 'math' or 'english'
@@ -51,6 +52,7 @@ function App() {
         isOpen={isSidebarOpen} 
         onSelectOnline={() => { setView('online'); closeSidebar(); }} 
         onSelectMemory={() => { setView('memory'); closeSidebar(); }} 
+        onSelectFlags={() => { setView('flags'); closeSidebar(); }} 
       />
       
       {isSidebarOpen && (
@@ -75,6 +77,7 @@ function App() {
           title={
             view === 'online' ? "Online o'ynash" : 
             view === 'memory' ? "Xotira o'yini" : 
+            view === 'flags' ? "Bayroqlar o'yini" : 
             view === 'game' ? "Arqon tortish" : 
             "Bosh sahifa"
           } 
@@ -101,6 +104,7 @@ function App() {
                 onSelectArqon={() => handleOpenSetup('math')} 
                 onSelectOnline={() => setView('online')} 
                 onSelectMemory={() => setView('memory')} 
+                onSelectFlags={() => setView('flags')} 
               />
               <Features />
               <OnlineSection onSelectOnline={() => setView('online')} />
@@ -113,6 +117,7 @@ function App() {
               <Footer 
                 onSelectOnline={() => setView('online')} 
                 onSelectMemory={() => setView('memory')} 
+                onSelectFlags={() => setView('flags')} 
               />
             </div>
           ) : view === 'online' ? (
@@ -121,6 +126,10 @@ function App() {
             />
           ) : view === 'memory' ? (
             <MemoryGameScreen 
+              onQuit={() => setView('landing')} 
+            />
+          ) : view === 'flags' ? (
+            <FlagGameScreen 
               onQuit={() => setView('landing')} 
             />
           ) : (
