@@ -1,6 +1,6 @@
 import React from 'react';
 
-const GameTypes = ({ onSelectArqon, onSelectOnline }) => {
+const GameTypes = ({ onSelectArqon, onSelectOnline, onSelectMemory }) => {
   return (
     <section className="landing-gametypes">
       <div className="landing-section-badge">
@@ -65,7 +65,14 @@ const GameTypes = ({ onSelectArqon, onSelectOnline }) => {
         </a>
 
         {/* Xotira O'yini */}
-        <a className="landing-gametype-card" href="/game/memory/">
+        <a 
+          className="landing-gametype-card" 
+          href="/game/memory/"
+          onClick={(e) => {
+            e.preventDefault();
+            if (onSelectMemory) onSelectMemory();
+          }}
+        >
           <div className="landing-gametype-icon" style={{ backgroundColor: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" rx="1" />

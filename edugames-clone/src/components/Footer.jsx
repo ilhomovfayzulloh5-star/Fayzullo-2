@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Footer = ({ onSelectOnline }) => {
+const Footer = ({ onSelectOnline, onSelectMemory }) => {
   return (
     <footer className="landing-footer">
       <div className="landing-footer-grid">
@@ -75,7 +75,15 @@ const Footer = ({ onSelectOnline }) => {
           <div className="landing-footer-title">O'yinlar</div>
           <div className="landing-footer-links">
             <a href="/game/arqon/">Matematika</a>
-            <a href="/game/memory/">Xotira O'yini</a>
+            <a 
+              href="/game/memory/"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onSelectMemory) onSelectMemory();
+              }}
+            >
+              Xotira O'yini
+            </a>
             <a href="/game/flags/">Bayroqlar</a>
             <a href="/game/colors/">Ranglar</a>
           </div>

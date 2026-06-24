@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Sidebar = ({ isOpen, onSelectOnline }) => {
+const Sidebar = ({ isOpen, onSelectOnline, onSelectMemory }) => {
   const [isMateriallarOpen, setIsMateriallarOpen] = useState(false);
   const [isMetodlarOpen, setIsMetodlarOpen] = useState(false);
 
@@ -152,8 +152,15 @@ const Sidebar = ({ isOpen, onSelectOnline }) => {
               </svg>
               <span className="nav-text">Online Quiz</span>
             </a>
-            <a href="/login" rel="nofollow" className="nav-sublink guest-auth-link">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <a 
+              href="/game/memory/" 
+              className="nav-sublink"
+              onClick={(e) => {
+                e.preventDefault();
+                if (onSelectMemory) onSelectMemory();
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="7" cy="7" r="3"></circle>
                 <circle cx="17" cy="17" r="3"></circle>
                 <path d="M9.5 9.5l5 5"></path>

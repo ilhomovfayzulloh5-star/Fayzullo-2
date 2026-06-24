@@ -16,11 +16,12 @@ import Footer from './components/Footer';
 import MathSetupModal from './components/MathSetupModal';
 import MathGameScreen from './components/MathGameScreen';
 import OnlineGameScreen from './components/OnlineGameScreen';
+import MemoryGameScreen from './components/MemoryGameScreen';
 import './App.css';
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [view, setView] = useState('landing'); // 'landing', 'game', 'online'
+  const [view, setView] = useState('landing'); // 'landing', 'game', 'online', 'memory'
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [gameSettings, setGameSettings] = useState(null);
   const [gameType, setGameType] = useState(null); // 'math' or 'english'
@@ -46,7 +47,11 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      <Sidebar isOpen={isSidebarOpen} onSelectOnline={() => { setView('online'); closeSidebar(); }} />
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onSelectOnline={() => { setView('online'); closeSidebar(); }} 
+        onSelectMemory={() => { setView('memory'); closeSidebar(); }} 
+      />
       
       {isSidebarOpen && (
         <div 
@@ -64,8 +69,16 @@ function App() {
         />
       )}
 
-      <div className="main-content no-topbar">
-        <Topbar onMenuClick={toggleSidebar} />
+      <div className={`main-content ${view === 'landing' ? 'no-topbar' : ''}`}>
+        <Topbar 
+          onMenuClick={toggleSidebar} 
+          title={
+            view === 'online' ? "Online o'ynash" : 
+            view === 'memory' ? "Xotira o'yini" : 
+            view === 'game' ? "Arqon tortish" : 
+            "Bosh sahifa"
+          } 
+        />
         <main className="container">
           {view === 'landing' ? (
             <div className="landing">
@@ -87,6 +100,7 @@ function App() {
               <GameTypes 
                 onSelectArqon={() => handleOpenSetup('math')} 
                 onSelectOnline={() => setView('online')} 
+                onSelectMemory={() => setView('memory')} 
               />
               <Features />
               <OnlineSection onSelectOnline={() => setView('online')} />
@@ -96,10 +110,17 @@ function App() {
               <Testimonials />
               <Faq />
               <Cta />
-              <Footer onSelectOnline={() => setView('online')} />
+              <Footer 
+                onSelectOnline={() => setView('online')} 
+                onSelectMemory={() => setView('memory')} 
+              />
             </div>
           ) : view === 'online' ? (
             <OnlineGameScreen 
+              onQuit={() => setView('landing')} 
+            />
+          ) : view === 'memory' ? (
+            <MemoryGameScreen 
               onQuit={() => setView('landing')} 
             />
           ) : (
